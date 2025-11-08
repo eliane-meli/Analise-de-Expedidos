@@ -249,6 +249,19 @@
             background-color: var(--primary);
             color: white;
             font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        .data-table th:hover {
+            background-color: var(--secondary);
+        }
+
+        .data-table th i {
+            margin-left: 5px;
+            font-size: 0.8rem;
+            opacity: 0.7;
         }
 
         .data-table tr:nth-child(even) {
@@ -410,6 +423,25 @@
             border-left: 4px solid var(--info);
         }
 
+        .sort-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .sort-controls label {
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .sort-controls select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+        }
+
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -563,17 +595,35 @@
             
             <div class="card">
                 <h2><i class="fas fa-table"></i> Dados Detalhados</h2>
+                
+                <div class="sort-controls">
+                    <label for="sort-column">Ordenar por:</label>
+                    <select id="sort-column">
+                        <option value="date">Data</option>
+                        <option value="volume">Volume Expedido</option>
+                        <option value="weekday">Dia da Semana</option>
+                        <option value="month">Mês</option>
+                        <option value="variationPercent">Variação %</option>
+                        <option value="variationVolume">Variação Volume</option>
+                        <option value="status">Status</option>
+                    </select>
+                    <select id="sort-order">
+                        <option value="asc">Crescente</option>
+                        <option value="desc">Decrescente</option>
+                    </select>
+                </div>
+                
                 <div style="overflow-x: auto;">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Data</th>
-                                <th>Volume Expedido</th>
-                                <th>Dia da Semana</th>
-                                <th>Mês</th>
-                                <th>Variação %</th>
-                                <th>Variação Volume</th>
-                                <th>Status</th>
+                                <th data-sort="date">Data <i class="fas fa-sort"></i></th>
+                                <th data-sort="volume">Volume Expedido <i class="fas fa-sort"></i></th>
+                                <th data-sort="weekday">Dia da Semana <i class="fas fa-sort"></i></th>
+                                <th data-sort="month">Mês <i class="fas fa-sort"></i></th>
+                                <th data-sort="variationPercent">Variação % <i class="fas fa-sort"></i></th>
+                                <th data-sort="variationVolume">Variação Volume <i class="fas fa-sort"></i></th>
+                                <th data-sort="status">Status <i class="fas fa-sort"></i></th>
                             </tr>
                         </thead>
                         <tbody id="data-table-body">
@@ -599,11 +649,15 @@
         const yearFilter = document.getElementById('year-filter');
         const connectionStatus = document.getElementById('connection-status');
         const connectionInfo = document.getElementById('connection-info');
+        const sortColumnSelect = document.getElementById('sort-column');
+        const sortOrderSelect = document.getElementById('sort-order');
         
         // Dados em memória
         let allData = [];
         let filteredData = [];
         let charts = {};
+        let currentSortColumn = 'date';
+        let currentSortOrder = 'desc';
         
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
@@ -616,6 +670,19 @@
             fileInput.addEventListener('change', handleFileUpload);
             monthFilter.addEventListener('change', applyFilters);
             yearFilter.addEventListener('change', applyFilters);
+            sortColumnSelect.addEventListener('change', updateSorting);
+            sortOrderSelect.addEventListener('change', updateSorting);
+            
+            // Adicionar eventos de clique nos cabeçalhos da tabela
+            document.querySelectorAll('.data-table th').forEach(header => {
+                header.addEventListener('click', () => {
+                    const column = header.getAttribute('data-sort');
+                    if (column) {
+                        sortColumnSelect.value = column;
+                        updateSorting();
+                    }
+                });
+            });
         });
         
         // Carregar dados do arquivo CSV incluído
@@ -852,7 +919,7 @@
 11/11/2025,,3,Terça,,,,,,,,,,,,,,,,
 12/11/2025,,4,Quarta,,,,,,,,,,,,,,,,
 13/11/2025,,5,Quinta,,,,,,,,,,,,,,,`;
-                
+
                 allData = processCSVData(csvData);
                 populateYearFilter();
                 applyFilters();
@@ -1025,6 +1092,13 @@
             displayStats(analysis);
             createCharts(analysis);
             generateEcommerceInsights(analysis);
+            populateDataTable(filteredData);
+        }
+        
+        // Função para atualizar a ordenação
+        function updateSorting() {
+            currentSortColumn = sortColumnSelect.value;
+            currentSortOrder = sortOrderSelect.value;
             populateDataTable(filteredData);
         }
         
@@ -1541,10 +1615,14 @@
             const tableBody = document.getElementById('data-table-body');
             tableBody.innerHTML = '';
             
-            const sortedData = [...data].sort((a, b) => b.date - a.date).slice(0, 30);
-            const averageVolume = sortedData.reduce((sum, item) => sum + item.volume, 0) / sortedData.length;
+            // Ordenar os dados
+            const sortedData = sortData([...data], currentSortColumn, currentSortOrder);
             
-            sortedData.forEach((item, index) => {
+            // Limitar a exibição a 30 registros
+            const displayData = sortedData.slice(0, 30);
+            const averageVolume = displayData.reduce((sum, item) => sum + item.volume, 0) / displayData.length;
+            
+            displayData.forEach((item, index) => {
                 const row = document.createElement('tr');
                 
                 let variationPercent = '-';
@@ -1553,8 +1631,8 @@
                 let variationBadgeClass = 'neutral';
                 let status = '';
                 
-                if (index < sortedData.length - 1) {
-                    const prevItem = sortedData[index + 1];
+                if (index < displayData.length - 1) {
+                    const prevItem = displayData[index + 1];
                     const variation = item.volume - prevItem.volume;
                     const changePercent = ((variation / prevItem.volume) * 100);
                     
@@ -1612,6 +1690,57 @@
                 `;
                 tableBody.appendChild(infoRow);
             }
+        }
+        
+        // Função para ordenar os dados
+        function sortData(data, column, order) {
+            return data.sort((a, b) => {
+                let aValue, bValue;
+                
+                switch(column) {
+                    case 'date':
+                        aValue = a.date;
+                        bValue = b.date;
+                        break;
+                    case 'volume':
+                        aValue = a.volume;
+                        bValue = b.volume;
+                        break;
+                    case 'weekday':
+                        aValue = a.weekday;
+                        bValue = b.weekday;
+                        break;
+                    case 'month':
+                        aValue = a.monthYear;
+                        bValue = b.monthYear;
+                        break;
+                    case 'variationPercent':
+                        // Para variação percentual, usamos uma lógica simplificada
+                        aValue = a.volume;
+                        bValue = b.volume;
+                        break;
+                    case 'variationVolume':
+                        // Para variação de volume, usamos uma lógica simplificada
+                        aValue = a.volume;
+                        bValue = b.volume;
+                        break;
+                    case 'status':
+                        // Para status, usamos uma lógica simplificada baseada no volume
+                        aValue = a.volume;
+                        bValue = b.volume;
+                        break;
+                    default:
+                        aValue = a.date;
+                        bValue = b.date;
+                }
+                
+                // Comparação para ordem crescente ou decrescente
+                if (order === 'asc') {
+                    return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+                } else {
+                    return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+                }
+            });
         }
         
         function showError(message) {

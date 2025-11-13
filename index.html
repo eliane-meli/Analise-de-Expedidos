@@ -530,6 +530,49 @@
             margin-top: 5px;
         }
 
+        /* Estilos para a nova seção de probabilidade */
+        .probability-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .probability-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid var(--primary);
+        }
+
+        .probability-day {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: var(--secondary);
+        }
+
+        .probability-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .probability-value.increase {
+            color: var(--positive);
+        }
+
+        .probability-value.decrease {
+            color: var(--negative);
+        }
+
+        .probability-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -648,6 +691,13 @@
                     <h2><i class="fas fa-chart-bar"></i> Frequência de Aumentos e Quedas</h2>
                     <div class="chart-container">
                         <canvas id="increase-frequency-chart"></canvas>
+                    </div>
+                    <!-- Nova seção: Análise de Probabilidade por Dia da Semana -->
+                    <div class="analysis-section" style="margin-top: 20px;">
+                        <h3><i class="fas fa-chart-pie"></i> Probabilidade de Aumento/Queda por Dia da Semana</h3>
+                        <div class="probability-grid" id="probability-grid">
+                            <!-- Conteúdo será preenchido via JavaScript -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -912,6 +962,7 @@
         const connectionInfo = document.getElementById('connection-info');
         const sortColumnSelect = document.getElementById('sort-column');
         const sortOrderSelect = document.getElementById('sort-order');
+        const probabilityGrid = document.getElementById('probability-grid');
         
         // Dados em memória
         let allData = [];
@@ -1184,8 +1235,6 @@
 16/11/2025,,1,Domingo,,,,,,,,,,,,,,,
 17/11/2025,,2,Segunda,,,,,,,,,,,,,,,`;
                
-
-                
                 allData = processCSVData(csvData);
                 populateYearFilter();
                 applyFilters();
@@ -1374,6 +1423,7 @@
             generateEcommerceInsights(analysis);
             populateDataTable(filteredData);
             updateStatisticalAnalysis(analysis);
+            updateProbabilityAnalysis(analysis);
         }
         
         // Função para atualizar a ordenação
@@ -1448,24 +1498,52 @@
             const increaseByWeekday = {};
             const decreaseByWeekday = {};
             
+            // Análise de probabilidade por dia da semana
+            const probabilityByWeekday = {};
+            
             const sortedData = [...data].sort((a, b) => a.date - b.date);
             
             for (let i = 1; i < sortedData.length; i++) {
                 const current = sortedData[i];
                 const previous = sortedData[i-1];
                 
+                // Inicializar contadores para o dia da semana atual
+                if (!probabilityByWeekday[current.dayOfWeek]) {
+                    probabilityByWeekday[current.dayOfWeek] = {
+                        increases: 0,
+                        decreases: 0,
+                        total: 0
+                    };
+                }
+                
                 if (current.volume > previous.volume) {
                     if (!increaseByWeekday[current.dayOfWeek]) {
                         increaseByWeekday[current.dayOfWeek] = 0;
                     }
                     increaseByWeekday[current.dayOfWeek]++;
+                    probabilityByWeekday[current.dayOfWeek].increases++;
                 } else if (current.volume < previous.volume) {
                     if (!decreaseByWeekday[current.dayOfWeek]) {
                         decreaseByWeekday[current.dayOfWeek] = 0;
                     }
                     decreaseByWeekday[current.dayOfWeek]++;
+                    probabilityByWeekday[current.dayOfWeek].decreases++;
                 }
+                
+                probabilityByWeekday[current.dayOfWeek].total++;
             }
+            
+            // Calcular probabilidades
+            Object.keys(probabilityByWeekday).forEach(weekday => {
+                const stats = probabilityByWeekday[weekday];
+                if (stats.total > 0) {
+                    stats.increaseProbability = stats.increases / stats.total;
+                    stats.decreaseProbability = stats.decreases / stats.total;
+                } else {
+                    stats.increaseProbability = 0;
+                    stats.decreaseProbability = 0;
+                }
+            });
             
             // Encontrar dias com mais aumentos e quedas
             let maxIncreaseFrequency = 0;
@@ -1531,6 +1609,7 @@
                 monthlyAverages,
                 increaseByWeekday,
                 decreaseByWeekday,
+                probabilityByWeekday,
                 maxIncreaseWeekday: { day: maxIncreaseWeekday, frequency: maxIncreaseFrequency },
                 maxDecreaseWeekday: { day: maxDecreaseWeekday, frequency: maxDecreaseFrequency },
                 rawData: sortedData,
@@ -1782,6 +1861,44 @@
                     }
                 }
             });
+        }
+        
+        // NOVA FUNÇÃO: Atualizar Análise de Probabilidade
+        function updateProbabilityAnalysis(analysis) {
+            const weekdayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+            const weekdayShortNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            
+            probabilityGrid.innerHTML = '';
+            
+            // Para cada dia da semana, criar um card de probabilidade
+            for (let i = 0; i < 7; i++) {
+                const weekdayStats = analysis.probabilityByWeekday[i] || {
+                    increases: 0,
+                    decreases: 0,
+                    total: 0,
+                    increaseProbability: 0,
+                    decreaseProbability: 0
+                };
+                
+                const increasePercent = (weekdayStats.increaseProbability * 100).toFixed(1);
+                const decreasePercent = (weekdayStats.decreaseProbability * 100).toFixed(1);
+                
+                const card = document.createElement('div');
+                card.className = 'probability-card';
+                
+                card.innerHTML = `
+                    <div class="probability-day">${weekdayNames[i]}</div>
+                    <div class="probability-value increase">${increasePercent}%</div>
+                    <div class="probability-label">Probabilidade de Aumento</div>
+                    <div class="probability-value decrease">${decreasePercent}%</div>
+                    <div class="probability-label">Probabilidade de Queda</div>
+                    <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-light);">
+                        Baseado em ${weekdayStats.total} observações
+                    </div>
+                `;
+                
+                probabilityGrid.appendChild(card);
+            }
         }
         
         // NOVA FUNÇÃO: Atualizar Análise Estatística

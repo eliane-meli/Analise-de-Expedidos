@@ -573,6 +573,52 @@
             color: var(--text-light);
         }
 
+        /* Estilos para a nova seção de dias com maior volume por mês */
+        .month-peak-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .month-peak-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid var(--success);
+        }
+
+        .month-peak-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .month-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--secondary);
+        }
+
+        .peak-date {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .peak-volume {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .peak-weekday {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -692,12 +738,24 @@
                     <div class="chart-container">
                         <canvas id="increase-frequency-chart"></canvas>
                     </div>
-                    <!-- Nova seção: Análise de Probabilidade por Dia da Semana -->
-                    <div class="analysis-section" style="margin-top: 20px;">
-                        <h3><i class="fas fa-chart-pie"></i> Probabilidade de Aumento/Queda por Dia da Semana</h3>
-                        <div class="probability-grid" id="probability-grid">
-                            <!-- Conteúdo será preenchido via JavaScript -->
-                        </div>
+                </div>
+            </div>
+
+            <!-- Nova seção horizontal para Probabilidade e Dias com Maior Volume por Mês -->
+            <div class="card">
+                <h2><i class="fas fa-chart-pie"></i> Análise de Probabilidade e Picos Mensais</h2>
+                
+                <div class="analysis-section">
+                    <h3><i class="fas fa-chart-pie"></i> Probabilidade de Aumento/Queda por Dia da Semana</h3>
+                    <div class="probability-grid" id="probability-grid">
+                        <!-- Conteúdo será preenchido via JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="analysis-section">
+                    <h3><i class="fas fa-calendar-day"></i> Dias com Maior Volume por Mês</h3>
+                    <div class="month-peak-grid" id="month-peak-grid">
+                        <!-- Conteúdo será preenchido via JavaScript -->
                     </div>
                 </div>
             </div>
@@ -963,6 +1021,7 @@
         const sortColumnSelect = document.getElementById('sort-column');
         const sortOrderSelect = document.getElementById('sort-order');
         const probabilityGrid = document.getElementById('probability-grid');
+        const monthPeakGrid = document.getElementById('month-peak-grid');
         
         // Dados em memória
         let allData = [];
@@ -1424,6 +1483,7 @@
             populateDataTable(filteredData);
             updateStatisticalAnalysis(analysis);
             updateProbabilityAnalysis(analysis);
+            updateMonthPeakAnalysis(analysis);
         }
         
         // Função para atualizar a ordenação
@@ -1501,6 +1561,9 @@
             // Análise de probabilidade por dia da semana
             const probabilityByWeekday = {};
             
+            // Análise de picos mensais
+            const monthPeaks = {};
+            
             const sortedData = [...data].sort((a, b) => a.date - b.date);
             
             for (let i = 1; i < sortedData.length; i++) {
@@ -1531,6 +1594,22 @@
                 }
                 
                 probabilityByWeekday[current.dayOfWeek].total++;
+                
+                // Análise de picos mensais
+                const monthKey = current.monthYear;
+                if (!monthPeaks[monthKey]) {
+                    monthPeaks[monthKey] = {
+                        date: current.date,
+                        volume: current.volume,
+                        weekday: current.weekday
+                    };
+                } else if (current.volume > monthPeaks[monthKey].volume) {
+                    monthPeaks[monthKey] = {
+                        date: current.date,
+                        volume: current.volume,
+                        weekday: current.weekday
+                    };
+                }
             }
             
             // Calcular probabilidades
@@ -1610,6 +1689,7 @@
                 increaseByWeekday,
                 decreaseByWeekday,
                 probabilityByWeekday,
+                monthPeaks,
                 maxIncreaseWeekday: { day: maxIncreaseWeekday, frequency: maxIncreaseFrequency },
                 maxDecreaseWeekday: { day: maxDecreaseWeekday, frequency: maxDecreaseFrequency },
                 rawData: sortedData,
@@ -1899,6 +1979,41 @@
                 
                 probabilityGrid.appendChild(card);
             }
+        }
+        
+        // NOVA FUNÇÃO: Atualizar Análise de Dias com Maior Volume por Mês
+        function updateMonthPeakAnalysis(analysis) {
+            const monthNames = {
+                '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
+                '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
+                '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+            };
+            
+            monthPeakGrid.innerHTML = '';
+            
+            // Ordenar os meses por data
+            const sortedMonths = Object.keys(analysis.monthPeaks).sort();
+            
+            // Para cada mês, criar um card com o dia de maior volume
+            sortedMonths.forEach(monthKey => {
+                const peakData = analysis.monthPeaks[monthKey];
+                const [month, year] = monthKey.split('/');
+                const monthName = monthNames[month] || month;
+                
+                const card = document.createElement('div');
+                card.className = 'month-peak-card';
+                
+                card.innerHTML = `
+                    <div class="month-peak-header">
+                        <div class="month-name">${monthName}/${year}</div>
+                        <div class="peak-date">${moment(peakData.date).format('DD/MM')}</div>
+                    </div>
+                    <div class="peak-volume">${peakData.volume.toLocaleString('pt-BR')}</div>
+                    <div class="peak-weekday">${peakData.weekday}</div>
+                `;
+                
+                monthPeakGrid.appendChild(card);
+            });
         }
         
         // NOVA FUNÇÃO: Atualizar Análise Estatística

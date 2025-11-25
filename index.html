@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Modificação da viewport para manter layout desktop em dispositivos móveis -->
+    <meta name="viewport" content="width=1400, initial-scale=0.65, maximum-scale=1.0, user-scalable=yes">
     <title>Dashboard de Análise de Volume - Ecommerce</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
@@ -37,20 +38,23 @@
             background-color: var(--background);
             color: var(--text);
             line-height: 1.6;
+            font-size: 16px;
+            min-width: 1000px; /* Garante que o layout não quebre em telas muito pequenas */
+            overflow-x: auto; /* Permite rolagem horizontal se necessário */
         }
 
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 15px;
         }
 
         header {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
-            padding: 25px 0;
+            padding: 20px 15px;
             border-radius: 12px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
@@ -619,27 +623,94 @@
             color: var(--text-light);
         }
 
-        @media (max-width: 768px) {
+        /* Ajustes para dispositivos móveis - mantendo layout desktop */
+        @media (max-width: 1400px) {
+            body {
+                font-size: 14px;
+            }
+            
+            .container {
+                padding: 10px;
+            }
+            
             .dashboard {
                 grid-template-columns: 1fr;
             }
             
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            /* Manter o layout desktop, apenas ajustar alguns elementos */
+            body {
+                min-width: 768px;
+                font-size: 12px;
             }
             
-            .date-filter {
-                justify-content: center;
+            .container {
+                padding: 8px;
+            }
+            
+            header {
+                padding: 15px 10px;
             }
             
             h1 {
-                font-size: 2rem;
+                font-size: 1.8rem;
             }
+            
+            .controls {
+                padding: 12px 15px;
+            }
+            
+            .btn {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            
+            .stat-card {
+                padding: 15px 10px;
+            }
+            
+            .stat-value {
+                font-size: 1.8rem;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            .chart-container {
+                height: 250px;
+            }
+            
+            .data-table {
+                font-size: 0.8rem;
+            }
+            
+            .data-table th, .data-table td {
+                padding: 8px 10px;
+            }
+        }
+
+        /* Estilo para rolagem horizontal em dispositivos móveis */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 15px;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
+    <!-- O restante do HTML permanece exatamente igual -->
     <div class="container">
         <header>
             <h1><i class="fas fa-chart-line"></i> Dashboard de Análise de Volume </h1>
@@ -982,7 +1053,7 @@
                     </select>
                 </div>
                 
-                <div style="overflow-x: auto;">
+                <div class="table-container">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -1007,6 +1078,7 @@
         <p>Dashboard de Análise de Volume. Desenvolvido por Eliane ERB - Conectado ao Google Sheets &copy; 2025</p>
     </footer>
 
+    <!-- O JavaScript permanece exatamente o mesmo -->
     <script>
         // Elementos da DOM
         const errorElement = document.getElementById('error-message');
@@ -1304,14 +1376,7 @@
 26/11/2025,
 27/11/2025,  
 28/11/2025 `;   
-    
-
-
-
-
-
                 
-               
                 allData = processCSVData(csvData);
                 populateYearFilter();
                 applyFilters();

@@ -1990,10 +1990,14 @@
 30/11/2025,23362
 01/12/2025,40617
 02/12/2025,61661
-03/12/2025,
-04/12/2025,
-05/12/2025,
-06/12/2025`;
+03/12/2025,62948
+04/12/2025,51775
+05/12/2025,53581
+06/12/2025,27829
+07/12,2025,
+08/12/2025,
+09/12/2025,
+10/12/2025,`;
                 
                 allData = processCSVData(csvData);
                 populateYearFilter();
@@ -2742,8 +2746,17 @@
                 monthlyTotals[monthKey].count++;
             });
             
-            // Ordenar meses
-            const sortedMonths = Object.keys(monthlyTotals).sort((a, b) => parseInt(a) - parseInt(b));
+            // Obter o mês atual
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth() + 1; // Janeiro é 0, então adicionamos 1
+            
+            // Filtrar o mês em vigência
+            const filteredMonths = Object.keys(monthlyTotals).filter(month => 
+                parseInt(month) !== currentMonth
+            );
+            
+            // Ordenar meses restantes
+            const sortedMonths = filteredMonths.sort((a, b) => parseInt(a) - parseInt(b));
             
             // Preparar dados para o gráfico
             const labels = sortedMonths.map(month => monthlyTotals[month].monthName);
@@ -2786,7 +2799,7 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Volume Total por Mês',
+                        label: 'Volume Total por Mês (excluindo mês atual)',
                         data: volumes,
                         backgroundColor: backgroundColors,
                         borderColor: borderColors,
@@ -2846,12 +2859,14 @@
             });
             
             // Atualizar análise de tendência
-            updateTrendAnalysis(volumes, labels, variations);
+            updateTrendAnalysis(volumes, labels, variations, filteredMonths.length > 0 ? monthlyTotals[filteredMonths[0]].monthName : '');
         }
         
-        function updateTrendAnalysis(volumes, labels, variations) {
+        function updateTrendAnalysis(volumes, labels, variations, excludedMonth = '') {
             if (volumes.length < 2) {
-                trendSummaryText.textContent = 'Dados insuficientes para análise de tendência. Selecione mais meses.';
+                trendSummaryText.textContent = excludedMonth ? 
+                    `Dados insuficientes para análise de tendência. Apenas ${labels.length} mês(es) disponível(is) após excluir o mês em vigência.` :
+                    'Dados insuficientes para análise de tendência. Selecione mais meses.';
                 trendInsightsList.innerHTML = '<li>Selecione pelo menos 2 meses para análise</li>';
                 trendTypeIndicator.textContent = 'Insuficiente';
                 return;
@@ -2938,6 +2953,10 @@
             
             let summaryText = `Análise de ${n} meses mostra uma tendência <strong>${trendType.toLowerCase()}</strong>. `;
             
+            if (excludedMonth) {
+                summaryText += `Mês atual (${excludedMonth}) excluído da análise. `;
+            }
+            
             if (slope > 0) {
                 summaryText += `O volume médio aumentou <strong>${growthPercent.toFixed(1)}%</strong> no período analisado. `;
             } else if (slope < 0) {
@@ -2997,6 +3016,11 @@
                 if (maxNegativeVariation < 0) {
                     insightsHTML += `<li><strong>Maior Queda:</strong> ${labels[maxNegativeIndex+1]} caiu ${Math.abs(maxNegativeVariation).toFixed(1)}% em relação a ${labels[maxNegativeIndex]}</li>`;
                 }
+            }
+            
+            // Insight 6: Sobre exclusão do mês atual
+            if (excludedMonth) {
+                insightsHTML += `<li><strong>Análise Exclusiva:</strong> Mês atual excluído para evitar dados parciais</li>`;
             }
             
             trendInsightsList.innerHTML = insightsHTML;
